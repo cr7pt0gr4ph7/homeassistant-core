@@ -64,18 +64,22 @@ def _test_selector(
     # Use selector in schema and validate
     vol_schema = vol.Schema({"selection": selector_instance})
     for selection in valid_selections:
-        assert vol_schema({"selection": selection}) == {
-            "selection": converter(selection)
-        }
+        if vol_schema({"selection": selection}) != {"selection": converter(selection)}:
+            raise AssertionError(
+                f"Valid selection {selection!r} {vol_schema({'selection': selection})!r} did not validate correctly"
+            )
     for selection in invalid_selections:
         with pytest.raises(vol.Invalid):
             vol_schema({"selection": selection})
 
     # Serialize selector
     selector_instance = selector.selector({selector_type: schema})
-    assert selector_instance.serialize() == {
+    if selector_instance.serialize() != {
         "selector": {selector_type: selector_instance.config}
-    }
+    }:
+        raise AssertionError(
+            f"Selector {selector_instance.serialize()!r} { ({selector_type: selector_instance.config})!r} did not serialize correctly"
+        )
     # Test serialized selector can be dumped to YAML
     yaml_util.dump(selector_instance.serialize())
 
@@ -673,6 +677,110 @@ def test_action_selector_schema(schema, valid_selections, invalid_selections) ->
 def test_object_selector_schema(schema, valid_selections, invalid_selections) -> None:
     """Test object selector."""
     _test_selector("object", schema, valid_selections, invalid_selections)
+
+
+@pytest.mark.parametrize(
+    ("schema", "valid_selections", "invalid_selections"),
+    [
+        (
+            {
+                "options": {
+                    "first": {
+                        "label": "First Option",
+                        "fields": {
+                            "name": {"required": True, "selector": {"text": {}}},
+                            "count": {"selector": {"number": {}}},
+                        },
+                    },
+                    "second": {
+                        "label": "Second Option",
+                        "fields": {
+                            "enabled": {"selector": {"boolean": {}}},
+                            "color": {
+                                "selector": {
+                                    "select": {
+                                        "options": ["red", "green", "blue"],
+                                    }
+                                }
+                            },
+                        },
+                    },
+                }
+            },
+            (
+                {"first": {"name": "abc"}},
+                {"first": {"name": "abc", "count": 100}},
+                {"second": {}},
+                {"second": {"enabled": True}},
+                {"second": {"enabled": False, "color": "red"}},
+            ),
+            (
+                {"first": {}},
+                {"first": {"count": 100}},
+                {"first": {"name": "abc", "count": "abc"}},
+                {"first": {"name": "abc", "unknown": "abc"}},
+                {"first": {"name": "abc", "enabled": True}},
+                {"second": {"unknown": "abc"}},
+                {"second": {"enabled": True, "color": "not_a_color"}},
+                {"second": {"name": "abc", "enabled": True}},
+                {"unknown": {"name": "abc"}},
+            ),
+        ),
+        (
+            {
+                "discriminator_field": "type",
+                "options": {
+                    "first": {
+                        "label": "First Option",
+                        "fields": {
+                            "name": {"required": True, "selector": {"text": {}}},
+                            "count": {"selector": {"number": {}}},
+                        },
+                    },
+                    "second": {
+                        "label": "Second Option",
+                        "fields": {
+                            "enabled": {"selector": {"boolean": {}}},
+                            "color": {
+                                "selector": {
+                                    "select": {
+                                        "options": ["red", "green", "blue"],
+                                    }
+                                }
+                            },
+                        },
+                    },
+                },
+            },
+            (
+                {"type": "first", "name": "abc"},
+                {"type": "first", "name": "abc", "count": 100},
+                {"type": "second"},
+                {"type": "second", "enabled": True},
+                {"type": "second", "enabled": False, "color": "red"},
+            ),
+            (
+                {"first": {"name": "abc"}},
+                {"type": "first"},
+                {"type": "first", "count": 100},
+                {"type": "first", "name": "abc", "count": "abc"},
+                {"type": "first", "name": "abc", "unknown": "abc"},
+                {"type": "first", "name": "abc", "enabled": True},
+                {"type": "first", "enabled": False, "color": "red"},
+                {"type": "second", "unknown": "abc"},
+                {"type": "second", "enabled": True, "color": "not_a_color"},
+                {"type": "second", "name": "abc", "enabled": True},
+                {"type": "unknown", "name": "abc"},
+            ),
+        ),
+    ],
+    [],
+)
+def test_alternative_selector_schema(
+    schema, valid_selections, invalid_selections
+) -> None:
+    """Test alternative selector."""
+    _test_selector("alternative", schema, valid_selections, invalid_selections)
 
 
 @pytest.mark.parametrize(

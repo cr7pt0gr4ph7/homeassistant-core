@@ -268,6 +268,111 @@ class AddonSelector(Selector[AddonSelectorConfig]):
         return addon
 
 
+class AlternativeSelectorOption(TypedDict):
+    """Class to represent an alternative selector options dict."""
+
+    label: str
+    fields: dict[str, ObjectSelectorField]
+
+
+class AlternativeSelectorConfig(BaseSelectorConfig):
+    """Class to represent an alternative selector config."""
+
+    options: Required[dict[str, AlternativeSelectorOption]]
+    multiple: bool
+    translation_key: str
+    discriminator_field: str
+
+
+@SELECTORS.register("alternative")
+class AlternativeSelector(Selector[AlternativeSelectorConfig]):
+    """Selector for an arbitrary object from a fixed list of schemas."""
+
+    selector_type = "alternative"
+
+    CONFIG_SCHEMA = make_selector_config_schema(
+        {
+            vol.Required("options"): {
+                str: {
+                    vol.Optional("label"): str,
+                    vol.Optional("fields"): {
+                        str: {
+                            vol.Required("selector"): validate_selector,
+                            vol.Optional("required"): bool,
+                            vol.Optional("label"): str,
+                        }
+                    },
+                }
+            },
+            vol.Optional("multiple", default=False): bool,
+            vol.Optional("translation_key"): str,
+            vol.Optional("discriminator_field"): str,
+        }
+    )
+
+    def __init__(self, config: AlternativeSelectorConfig | None = None) -> None:
+        """Instantiate a selector."""
+        super().__init__(config)
+
+    def __call__(self, data: Any) -> Any:
+        """Validate the passed selection."""
+        discriminator_field = self.config.get("discriminator_field", None)
+        option_schemas = {}
+        for option_key, option in self.config["options"].items():
+            field_schemas = {
+                (
+                    vol.Optional(field_key)
+                    if not value.get("required")
+                    else vol.Required(field_key)
+                ): vol.Schema(selector(value["selector"]))
+                for field_key, value in option.get("fields", {}).items()
+            }
+
+            if discriminator_field is not None:
+                field_schemas[vol.Required(discriminator_field)] = vol.Schema(
+                    vol.Equal(option_key)
+                )
+
+            option_schemas[option_key] = vol.Schema(field_schemas)
+
+        def validate_single(item: Any) -> Any:
+            if not isinstance(item, dict):
+                raise vol.Invalid("Value should be a dictionary")
+
+            if discriminator_field is not None:
+                if discriminator_field not in item:
+                    raise vol.Invalid(
+                        f"Missing discriminator field '{discriminator_field}'"
+                    )
+                option_key = item[discriminator_field]
+                option_data = item
+            else:
+                if len(item) != 1:
+                    raise vol.Invalid("Must contain exactly one key")
+                option_key = list(item)[0]
+                option_data = item[option_key]
+
+            if option_key not in option_schemas:
+                raise vol.Invalid(
+                    f"Invalid option '{option_key}', expected one of {list(option_schemas.keys())}"
+                )
+
+            validated_data = option_schemas[option_key](option_data)
+            return (
+                {option_key: validated_data}
+                if discriminator_field is None
+                else validated_data
+            )
+
+        parent_schema = vol.Schema(validate_single)
+
+        if not self.config["multiple"]:
+            return parent_schema(data) if parent_schema else data
+        if not isinstance(data, list):
+            raise vol.Invalid("Value should be a list")
+        return [parent_schema(item) for item in data]
+
+
 class AreaSelectorConfig(BaseSelectorConfig, total=False):
     """Class to represent an area selector config."""
 
