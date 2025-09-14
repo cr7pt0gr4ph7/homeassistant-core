@@ -282,6 +282,7 @@ class AlternativeSelectorConfig(BaseSelectorConfig):
     multiple: bool
     translation_key: str
     discriminator_field: str
+    sort: bool
 
 
 @SELECTORS.register("alternative")
@@ -307,6 +308,7 @@ class AlternativeSelector(Selector[AlternativeSelectorConfig]):
             vol.Optional("multiple", default=False): bool,
             vol.Optional("translation_key"): str,
             vol.Optional("discriminator_field"): str,
+            vol.Optional("sort", default=False): bool,
         }
     )
 
