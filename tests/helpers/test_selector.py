@@ -666,6 +666,7 @@ def test_action_selector_schema(schema, valid_selections, invalid_selections) ->
                     },
                 },
                 "multiple": True,
+                "mode": "inline",
                 "label_field": "name",
                 "description_field": "percentage",
             },

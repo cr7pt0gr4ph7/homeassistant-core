@@ -1148,6 +1148,13 @@ class NumberSelector(Selector[NumberSelectorConfig]):
         return value
 
 
+class ObjectSelectorMode(StrEnum):
+    """Possible modes for an object selector."""
+
+    DIALOG = "dialog"
+    INLINE = "inline"
+
+
 class ObjectSelectorField(TypedDict):
     """Class to represent an object selector fields dict."""
 
@@ -1161,6 +1168,7 @@ class ObjectSelectorConfig(BaseSelectorConfig):
 
     fields: dict[str, ObjectSelectorField]
     multiple: bool
+    mode: ObjectSelectorMode
     label_field: str
     description_field: bool
     translation_key: str
@@ -1182,6 +1190,9 @@ class ObjectSelector(Selector[ObjectSelectorConfig]):
                 }
             },
             vol.Optional("multiple", default=False): bool,
+            vol.Optional("mode"): vol.All(
+                vol.Coerce(ObjectSelectorMode), lambda val: val.value
+            ),
             vol.Optional("label_field"): str,
             vol.Optional("description_field"): str,
             vol.Optional("translation_key"): str,
