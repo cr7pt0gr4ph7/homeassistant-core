@@ -684,15 +684,17 @@ def test_object_selector_schema(schema, valid_selections, invalid_selections) ->
     [
         (
             {
-                "options": {
-                    "first": {
+                "options": [
+                    {
+                        "value": "first",
                         "label": "First Option",
                         "fields": {
                             "name": {"required": True, "selector": {"text": {}}},
                             "count": {"selector": {"number": {}}},
                         },
                     },
-                    "second": {
+                    {
+                        "value": "second",
                         "label": "Second Option",
                         "fields": {
                             "enabled": {"selector": {"boolean": {}}},
@@ -705,7 +707,7 @@ def test_object_selector_schema(schema, valid_selections, invalid_selections) ->
                             },
                         },
                     },
-                }
+                ]
             },
             (
                 {"first": {"name": "abc"}},
@@ -729,15 +731,17 @@ def test_object_selector_schema(schema, valid_selections, invalid_selections) ->
         (
             {
                 "discriminator_field": "type",
-                "options": {
-                    "first": {
+                "options": [
+                    {
+                        "value": "first",
                         "label": "First Option",
                         "fields": {
                             "name": {"required": True, "selector": {"text": {}}},
                             "count": {"selector": {"number": {}}},
                         },
                     },
-                    "second": {
+                    {
+                        "value": "second",
                         "label": "Second Option",
                         "fields": {
                             "enabled": {"selector": {"boolean": {}}},
@@ -750,7 +754,7 @@ def test_object_selector_schema(schema, valid_selections, invalid_selections) ->
                             },
                         },
                     },
-                },
+                ],
             },
             (
                 {"type": "first", "name": "abc"},

@@ -269,8 +269,9 @@ class AddonSelector(Selector[AddonSelectorConfig]):
 
 
 class AlternativeSelectorOption(TypedDict):
-    """Class to represent an alternative selector options dict."""
+    """Class to represent an alternative selector option dict."""
 
+    value: Required[str]
     label: str
     fields: dict[str, ObjectSelectorField]
 
@@ -278,7 +279,7 @@ class AlternativeSelectorOption(TypedDict):
 class AlternativeSelectorConfig(BaseSelectorConfig):
     """Class to represent an alternative selector config."""
 
-    options: Required[dict[str, AlternativeSelectorOption]]
+    options: Required[Sequence[AlternativeSelectorOption]]
     multiple: bool
     translation_key: str
     discriminator_field: str
@@ -293,8 +294,9 @@ class AlternativeSelector(Selector[AlternativeSelectorConfig]):
 
     CONFIG_SCHEMA = make_selector_config_schema(
         {
-            vol.Required("options"): {
-                str: {
+            vol.Required("options"): [
+                {
+                    vol.Required("value"): str,
                     vol.Optional("label"): str,
                     vol.Optional("fields"): {
                         str: {
@@ -304,7 +306,7 @@ class AlternativeSelector(Selector[AlternativeSelectorConfig]):
                         }
                     },
                 }
-            },
+            ],
             vol.Optional("multiple", default=False): bool,
             vol.Optional("translation_key"): str,
             vol.Optional("discriminator_field"): str,
@@ -320,7 +322,7 @@ class AlternativeSelector(Selector[AlternativeSelectorConfig]):
         """Validate the passed selection."""
         discriminator_field = self.config.get("discriminator_field", None)
         option_schemas = {}
-        for option_key, option in self.config["options"].items():
+        for option in self.config["options"]:
             field_schemas = {
                 (
                     vol.Optional(field_key)
@@ -332,10 +334,10 @@ class AlternativeSelector(Selector[AlternativeSelectorConfig]):
 
             if discriminator_field is not None:
                 field_schemas[vol.Required(discriminator_field)] = vol.Schema(
-                    vol.Equal(option_key)
+                    vol.Equal(option["value"])
                 )
 
-            option_schemas[option_key] = vol.Schema(field_schemas)
+            option_schemas[option["value"]] = vol.Schema(field_schemas)
 
         def validate_single(item: Any) -> Any:
             if not isinstance(item, dict):
