@@ -27,6 +27,7 @@ DOMAIN: Final = "domain"
 ADDRESS: Final = "address"
 CONNECTABLE: Final = "connectable"
 LOCAL_NAME: Final = "local_name"
+DEVICE_CLASS: Final = "device_class"
 SERVICE_UUID: Final = "service_uuid"
 SERVICE_DATA_UUID: Final = "service_data_uuid"
 MANUFACTURER_ID: Final = "manufacturer_id"
@@ -65,6 +66,7 @@ class BluetoothCallbackMatcherWithCallback(
 class IntegrationMatchHistory:
     """Track which fields have been seen."""
 
+    device_class: set[int]
     manufacturer_data: bool
     service_data: set[str]
     service_uuids: set[str]
@@ -135,6 +137,7 @@ class IntegrationMatcher:
         if not matched_domains:
             return matched_domains
         if previous_match:
+            previous_match.device_class |= set(advertisement_data.device_class)
             previous_match.manufacturer_data |= bool(
                 advertisement_data.manufacturer_data
             )
@@ -142,6 +145,7 @@ class IntegrationMatcher:
             previous_match.service_uuids |= set(advertisement_data.service_uuids)
         else:
             matched[device.address] = IntegrationMatchHistory(
+                device_class=set(advertisement_data.device_class),
                 manufacturer_data=bool(advertisement_data.manufacturer_data),
                 service_data=set(advertisement_data.service_data),
                 service_uuids=set(advertisement_data.service_uuids),
