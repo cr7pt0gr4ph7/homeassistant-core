@@ -295,7 +295,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     async def handle_reload(service: ServiceCall) -> None:
         """Reload intents."""
-        agent = get_agent_manager(hass).default_agent
+        agent_id = service.data.get("agent_id")
+        if agent_id is None:
+            agent_id = HOME_ASSISTANT_AGENT
+
+        agent = async_get_agent(hass, agent_id)
         if agent is not None:
             await agent.async_reload(language=service.data.get(ATTR_LANGUAGE))
 
